@@ -116,6 +116,8 @@ class Opauth {
 				}
 
 				$this->Strategy->callAction($this->env['params']['action']);
+                CakeSession::write('STRATEGY_PERSISTED', serialize($this->Strategy));
+
 			} else {
 				trigger_error('Unsupported or undefined Opauth strategy - '.$this->env['params']['strategy'], E_USER_ERROR);
 			}
