@@ -21,17 +21,17 @@ class Opauth {
 	 * Refer to example/opauth.conf.php.default or example/opauth.conf.php.advanced for sample
 	 * More info: https://github.com/uzyn/opauth/wiki/Opauth-configuration
 	 */
-	public $config;
+	public array $config;
 
 	/**
 	 * Environment variables
 	 */
-	public $env;
+	public array $env;
 
 	/**
 	 * Strategy map: for mapping URL-friendly name to Class name
 	 */
-	public $strategyMap;
+	public array $strategyMap;
 
 	/**
 	 * Constructor
@@ -40,12 +40,12 @@ class Opauth {
 	 * @param array $config User configuration
 	 * @param boolean $run Whether Opauth should auto run after initialization.
 	 */
-	public function __construct($config = array(), $run = true) {
+	public function __construct(array $config = [], bool $run = false) {
 		/**
 		 * Configurable settings
 		 */
-		$this->config = array_merge(array(
-			'host' => ((array_key_exists('HTTPS', $_SERVER) && $_SERVER['HTTPS'])?'https':'http').'://'.$_SERVER['HTTP_HOST'],
+		$this->config = array_merge([
+			'host' => ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'],
 			'path' => '/',
 			'callback_url' => '{path}callback',
 			'callback_transport' => 'session',
@@ -57,28 +57,28 @@ class Opauth {
 			'security_salt' => 'LDFmiilYf8Fyw5W10rx4W1KsVrieQCnpBzzpTBWA5vJidQKDx8pMJbmw28R1C4m',
 			'security_iteration' => 300,
 			'security_timeout' => '2 minutes'
-		), $config);
+		], $config);
 
 		/**
 		 * Environment variables, including config
 		 * Used mainly as accessors
 		 */
-		$this->env = array_merge(array(
+		$this->env = array_merge([
 			'request_uri' => $_SERVER['REQUEST_URI'],
-			'complete_path' => $this->config['host'].$this->config['path'],
-			'lib_dir' => dirname(__FILE__).'/',
-			'strategy_dir' => dirname(__FILE__).'/Strategy/'
-		), $this->config);
+			'complete_path' => $this->config['host'] . $this->config['path'],
+			'lib_dir' => dirname(__FILE__) . '/',
+			'strategy_dir' => dirname(__FILE__) . '/Strategy/'
+		], $this->config);
 
 		if (!class_exists('OpauthStrategy')) {
-			require $this->env['lib_dir'].'OpauthStrategy.php';
+			require $this->env['lib_dir'] . 'OpauthStrategy.php';
 		}
 
 		foreach ($this->env as $key => $value) {
 			$this->env[$key] = OpauthStrategy::envReplace($value, $this->env);
 		}
 
-		if ($this->env['security_salt'] == 'LDFmiilYf8Fyw5W10rx4W1KsVrieQCnpBzzpTBWA5vJidQKDx8pMJbmw28R1C4m'){
+		if ($this->env['security_salt'] === 'LDFmiilYf8Fyw5W10rx4W1KsVrieQCnpBzzpTBWA5vJidQKDx8pMJbmw28R1C4m') {
 			trigger_error('Please change the value of \'security_salt\' to a salt value specific to your application', E_USER_NOTICE);
 		}
 
@@ -93,13 +93,13 @@ class Opauth {
 	 * Run Opauth:
 	 * Parses request URI and perform defined authentication actions based based on it.
 	 */
-	public function run() {
+	public function run(): void {
 		$this->parseUri();
 
 		if (!empty($this->env['params']['strategy'])) {
-			if (strtolower($this->env['params']['strategy']) == 'callback') {
+			if (strtolower($this->env['params']['strategy']) === 'callback') {
 				$this->callback();
-			} elseif (array_key_exists($this->env['params']['strategy'], $this->strategyMap)) {
+			} elseif (isset($this->strategyMap[$this->env['params']['strategy']])) {
 				$name = $this->strategyMap[$this->env['params']['strategy']]['name'];
 				$class = $this->strategyMap[$this->env['params']['strategy']]['class'];
 				$strategy = $this->env['Strategy'][$name];
@@ -119,18 +119,18 @@ class Opauth {
                 CakeSession::write('STRATEGY_PERSISTED', serialize($this->Strategy));
 
 			} else {
-				trigger_error('Unsupported or undefined Opauth strategy - '.$this->env['params']['strategy'], E_USER_ERROR);
+				trigger_error('Unsupported or undefined Opauth strategy - ' . $this->env['params']['strategy'], E_USER_ERROR);
 			}
 		} else {
 			$sampleStrategy = array_pop($this->env['Strategy']);
-			trigger_error('No strategy is requested. Try going to '.$this->env['complete_path'].$sampleStrategy['strategy_url_name'].' to authenticate with '.$sampleStrategy['strategy_name'], E_USER_NOTICE);
+			trigger_error('No strategy is requested. Try going to ' . $this->env['complete_path'] . $sampleStrategy['strategy_url_name'] . ' to authenticate with ' . $sampleStrategy['strategy_name'], E_USER_NOTICE);
 		}
 	}
 
 	/**
 	 * Parses Request URI
 	 */
-	private function parseUri() {
+	private function parseUri(): void {
 		$this->env['request'] = substr($this->env['request_uri'], strlen($this->env['path']) - 1);
 
 		if (preg_match_all('/\/([A-Za-z0-9-_]+)/', $this->env['request'], $matches)) {
@@ -150,16 +150,16 @@ class Opauth {
 	/**
 	 * Load strategies from user-input $config
 	 */
-	private function loadStrategies() {
+	private function loadStrategies(): void {
 		if (isset($this->env['Strategy']) && is_array($this->env['Strategy']) && count($this->env['Strategy']) > 0) {
 			foreach ($this->env['Strategy'] as $key => $strategy) {
 				if (!is_array($strategy)) {
 					$key = $strategy;
-					$strategy = array();
+					$strategy = [];
 				}
 
 				$strategyClass = $key;
-				if (array_key_exists('strategy_class', $strategy)) {
+				if (isset($strategy['strategy_class'])) {
 					$strategyClass = $strategy['strategy_class'];
 				} else {
 					$strategy['strategy_class'] = $strategyClass;
@@ -172,10 +172,10 @@ class Opauth {
 					$strategy['strategy_url_name'] = strtolower($key);
 				}
 
-				$this->strategyMap[$strategy['strategy_url_name']] = array(
+				$this->strategyMap[$strategy['strategy_url_name']] = [
 					'name' => $key,
 					'class' => $strategyClass
-				);
+				];
 
 				$this->env['Strategy'][$key] = $strategy;
 			}
@@ -194,14 +194,14 @@ class Opauth {
 	 * @param string $reason Sets reason for failure if validation fails
 	 * @return boolean true: valid; false: not valid.
 	 */
-	public function validate($input = null, $timestamp = null, $signature = null, &$reason = null) {
+	public function validate(string $input, string $timestamp, string $signature, string &$reason = ''): bool {
 		if (!empty($_REQUEST['input']) && !empty($_REQUEST['timestamp']) && !empty($_REQUEST['signature'])) {
 			$timestamp = $_REQUEST['timestamp'];
 			$signature = $_REQUEST['signature'];
 		}
 
 		$timestamp_int = strtotime($timestamp);
-		if ($timestamp_int < strtotime('-'.$this->env['security_timeout']) || $timestamp_int > time()) {
+		if ($timestamp_int < strtotime('-' . $this->env['security_timeout']) || $timestamp_int > time()) {
 			$reason = "Auth response expired";
 			return false;
 		}
@@ -221,31 +221,30 @@ class Opauth {
 	 * Application should redirect callback URL to application-side.
 	 * Refer to example/callback.php on how to handle auth callback.
 	 */
-	public function callback() {
+	public function callback(): void {
 		echo "<strong>Note: </strong>Application should set callback URL to application-side for further specific authentication process.\n<br>";
 
-		$response = array();
+		$response = [];
 		switch($this->env['callback_transport']) {
 			case 'session':
 				if (!session_id()) {
 					session_start();
 				}
-				$response = $_SESSION['opauth'];
+				$response = $_SESSION['opauth'] ?? [];
 				unset($_SESSION['opauth']);
 				break;
 			case 'post':
-				$response = unserialize(base64_decode( $_POST['opauth'] ));
+				$response = unserialize(base64_decode($_POST['opauth'] ?? ''));
 				break;
 			case 'get':
-				$response = unserialize(base64_decode( $_GET['opauth'] ));
+				$response = unserialize(base64_decode($_GET['opauth'] ?? ''));
 				break;
 			default:
 				echo '<strong style="color: red;">Error: </strong>Unsupported callback_transport.'."<br>\n";
 				break;
 		}
 
-
-		if (array_key_exists('error', $response)) {  // Check if it's an error callback
+		if (isset($response['error'])) {  // Check if it's an error callback
 			echo '<strong style="color: red;">Authentication error: </strong> Opauth returns error auth response.'."<br>\n";
 		} else { // No it isn't. Proceed with auth validation
 			if (empty($response['auth']) || empty($response['timestamp']) || empty($response['signature']) || empty($response['auth']['provider']) || empty($response['auth']['uid'])) {
@@ -273,35 +272,35 @@ class Opauth {
 	 * @param string $strategy Name of a strategy
 	 * @return string Class name of the strategy, usually StrategyStrategy
 	 */
-	private function requireStrategy($strategy) {
-		if (!class_exists($strategy.'Strategy')) {
+	private function requireStrategy(string $strategy): string {
+		if (!class_exists($strategy . 'Strategy')) {
 			// Include dir where Git repository for strategy is cloned directly without
 			// specifying a dir name, eg. opauth-facebook
-			$directories = array(
-				$this->env['strategy_dir'].$strategy.'/',
-				$this->env['strategy_dir'].'opauth-'.strtolower($strategy).'/',
-				$this->env['strategy_dir'].strtolower($strategy).'/',
-				$this->env['strategy_dir'].'Opauth-'.$strategy.'/'
-			);
+			$directories = [
+				$this->env['strategy_dir'] . $strategy . '/',
+				$this->env['strategy_dir'] . 'opauth-' . strtolower($strategy) . '/',
+				$this->env['strategy_dir'] . strtolower($strategy) . '/',
+				$this->env['strategy_dir'] . 'Opauth-' . $strategy . '/'
+			];
 
 			// Include deprecated support for strategies without Strategy postfix as class name or filename
-			$classNames = array(
-				$strategy.'Strategy',
+			$classNames = [
+				$strategy . 'Strategy',
 				$strategy
-			);
+			];
 
 			foreach ($directories as $dir) {
 				foreach ($classNames as $name) {
-					if (file_exists($dir.$name.'.php')) {
-						require $dir.$name.'.php';
+					if (file_exists($dir . $name . '.php')) {
+						require $dir . $name . '.php';
 						return $name;
 					}
 				}
 			}
 
-			trigger_error('Strategy class file ('.$this->env['strategy_dir'].$strategy.'/'.$strategy.'Strategy.php'.') is missing', E_USER_ERROR);
+			trigger_error('Strategy class file (' . $this->env['strategy_dir'] . $strategy . '/' . $strategy . 'Strategy.php' . ') is missing', E_USER_ERROR);
 		}
-		return $strategy.'Strategy';
+		return $strategy . 'Strategy';
 	}
 
 	/**
@@ -310,7 +309,7 @@ class Opauth {
 	 *
 	 * @param mixed $var Object or variable to be printed
 	 */
-	public function debug($var) {
+	public function debug($var): void {
 		if ($this->env['debug'] !== false) {
 			echo "<pre>";
 			print_r($var);

@@ -188,7 +188,7 @@ Refer also to [strategy contribution guide](https://github.com/opauth/opauth/wik
 
 Requirements
 -------------
-PHP 5 (>= 5.2)
+PHP 7.4 or higher
 with [`allow_url_fopen`](http://php.net/manual/en/filesystem.configuration.php#ini.allow-url-fopen) enabled
 
 Contribute
